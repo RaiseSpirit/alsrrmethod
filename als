@@ -1,10 +1,11 @@
--- CONFIG
+-- CONFIGURATION
 local placeId = 85896571713843 -- Confirmed BSGI place ID
 local maxServers = 200
-local webhookUrl = "https://discord.com/api/webhooks/1367259636616663122/pYz5XUFncqU_Bh4o6zwpOYeac5nlPlSbio8VcvFFT17jAd6se3kLmR5f2gaqueDJh5Rh" -- Discord Webhook URL
+local eggWebhookUrl = "https://discord.com/api/webhooks/1367259636616663122/pYz5XUFncqU_Bh4o6zwpOYeac5nlPlSbio8VcvFFT17jAd6se3kLmR5f2gaqueDJh5Rh" -- Webhook for egg found
+local logWebhookUrl = "https://discord.com/api/webhooks/1128856038137933885/5QenGJa5Ip8gb7rBLJs_q9gkYhsL134ARFz8HVTp0obEyE6jQiVULi7-pSgcKeu8OMQh" -- Webhook to log server IDs
 
 -- Egg names to check for in Rendered.Rifts
-local eggNames = {"silly-egg"}
+local eggNames = {"silly-egg", "rainbow-egg", "void-egg"}
 
 -- SERVICES
 local HttpService = game:GetService("HttpService")
@@ -26,6 +27,7 @@ end
 
 -- SERVER HOP LOGIC
 local checked = {}
+local visitedServers = {} -- Table to keep track of visited server IDs
 local cursor = nil
 
 -- Function to check for any of the eggs in workspace.Rendered.Rifts
@@ -42,8 +44,8 @@ local function foundEgg()
     return nil
 end
 
--- Send a Discord webhook
-local function sendWebhook(eggName)
+-- Send a Discord webhook for egg found
+local function sendEggWebhook(eggName)
     local joinLink = "https://www.roblox.com/games/" .. placeId .. "/?join-through-client=true"
     local message = {
         content = "Egg found: " .. eggName,
@@ -61,7 +63,32 @@ local function sendWebhook(eggName)
 
     local data = HttpService:JSONEncode(message)
     requestFunc({
-        Url = webhookUrl,
+        Url = eggWebhookUrl,
+        Method = "POST",
+        Headers = { ["Content-Type"] = "application/json" },
+        Body = data
+    })
+end
+
+-- Send a Discord webhook to log server IDs
+local function sendLogWebhook(serverId)
+    local message = {
+        content = "Joined Server: " .. serverId,
+        embeds = {
+            {
+                title = "Server ID Logged",
+                description = "The script has joined a new server.",
+                fields = {
+                    { name = "Server ID", value = serverId },
+                    { name = "Player", value = LocalPlayer.Name }
+                }
+            }
+        }
+    }
+
+    local data = HttpService:JSONEncode(message)
+    requestFunc({
+        Url = logWebhookUrl,
         Method = "POST",
         Headers = { ["Content-Type"] = "application/json" },
         Body = data
@@ -94,11 +121,11 @@ queue_on_teleport(requeueScript)
 local eggName = foundEgg()
 if eggName == "silly-egg" then
     warn("✅ Found the silly-egg in this server!")
-    sendWebhook(eggName)
+    sendEggWebhook(eggName)
     return -- Stop if the silly-egg is found
 elseif eggName then
     warn("Found a " .. eggName .. ", but continuing to hop to other servers.")
-    sendWebhook(eggName)
+    sendEggWebhook(eggName)
 end
 
 -- Start hopping
@@ -106,11 +133,14 @@ local count = 0
 while count < maxServers do
     local servers = getServers()
     for _, srv in ipairs(servers) do
-        if srv.playing < srv.maxPlayers and not checked[srv.id] then
+        -- Only hop to servers that haven't been visited
+        if srv.playing < srv.maxPlayers and not visitedServers[srv.id] then
+            visitedServers[srv.id] = true -- Mark this server as visited
             checked[srv.id] = true
             count += 1
             warn("🌐 Hopping to server " .. count .. ": " .. srv.id)
             TeleportService:TeleportToPlaceInstance(placeId, srv.id, LocalPlayer)
+            sendLogWebhook(srv.id) -- Log the server ID
             task.wait(3)
         end
     end
