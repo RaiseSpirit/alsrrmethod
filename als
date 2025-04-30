@@ -14,12 +14,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 -- UNIVERSAL HTTP SUPPORT
-local requestFunc =
-    (http and http.request) or
-    (http_request) or
-    (request) or
-    (fluxus and fluxus.request) or
-    (getgenv and getgenv().request)
+local requestFunc = (syn and syn.request) or (http and http.request) or (http_request) or (request) or (fluxus and fluxus.request) or (getgenv and getgenv().request)
 
 if not requestFunc then
     error("❌ Your executor does not support HTTP requests.")
@@ -27,7 +22,7 @@ end
 
 -- SERVER HOP LOGIC
 local checked = {}
-local visitedServers = {} -- Table to keep track of visited server IDs
+local visitedServers = {}
 local cursor = nil
 
 -- Function to check for any of the eggs in workspace.Rendered.Rifts
@@ -61,13 +56,18 @@ local function sendEggWebhook(eggName)
         }
     }
 
-    local data = HttpService:JSONEncode(message)
-    requestFunc({
-        Url = eggWebhookUrl,
-        Method = "POST",
-        Headers = { ["Content-Type"] = "application/json" },
-        Body = data
-    })
+    local success, err = pcall(function()
+        local data = HttpService:JSONEncode(message)
+        requestFunc({
+            Url = eggWebhookUrl,
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = data
+        })
+    end)
+    if not success then
+        warn("Failed to send egg webhook: " .. err)
+    end
 end
 
 -- Send a Discord webhook to log server IDs
@@ -86,13 +86,18 @@ local function sendLogWebhook(serverId)
         }
     }
 
-    local data = HttpService:JSONEncode(message)
-    requestFunc({
-        Url = logWebhookUrl,
-        Method = "POST",
-        Headers = { ["Content-Type"] = "application/json" },
-        Body = data
-    })
+    local success, err = pcall(function()
+        local data = HttpService:JSONEncode(message)
+        requestFunc({
+            Url = logWebhookUrl,
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = data
+        })
+    end)
+    if not success then
+        warn("Failed to send log webhook: " .. err)
+    end
 end
 
 -- Get public servers
@@ -102,49 +107,85 @@ local function getServers()
         url = url .. "&cursor=" .. cursor
     end
 
-    local res = requestFunc({ Url = url, Method = "GET" })
+    local success, res = pcall(function()
+        return requestFunc({ Url = url, Method = "GET" })
+    end)
+    
+    if not success or not res then
+        warn("Failed to get servers: " .. (res or "unknown error"))
+        return {}
+    end
+
     local data = HttpService:JSONDecode(res.Body)
     cursor = data.nextPageCursor
-    return data.data
+    return data.data or {}
 end
 
--- Script to requeue after teleporting
-local requeueScript = [[
-loadstring(game:HttpGet("https://pastebin.com/raw/XXXXXXX"))()
-]]
--- OPTIONAL: If you don't want to host it externally, replace with this script again:
--- queue_on_teleport([[ FULL SCRIPT AS STRING HERE ]])
-
-queue_on_teleport(requeueScript)
-
--- Check current server for eggs
-local eggName = foundEgg()
-if eggName == "silly-egg" then
-    warn("✅ Found the silly-egg in this server!")
-    sendEggWebhook(eggName)
-    return -- Stop if the silly-egg is found
-elseif eggName then
-    warn("Found a " .. eggName .. ", but continuing to hop to other servers.")
-    sendEggWebhook(eggName)
+-- Check if queue_on_teleport exists, if not create a dummy function
+if not queue_on_teleport then
+    queue_on_teleport = function(code)
+        warn("queue_on_teleport not supported, continuing without it")
+    end
 end
 
--- Start hopping
-local count = 0
-while count < maxServers do
-    local servers = getServers()
-    for _, srv in ipairs(servers) do
-        -- Only hop to servers that haven't been visited
-        if srv.playing < srv.maxPlayers and not visitedServers[srv.id] then
-            visitedServers[srv.id] = true -- Mark this server as visited
-            checked[srv.id] = true
-            count += 1
-            warn("🌐 Hopping to server " .. count .. ": " .. srv.id)
-            TeleportService:TeleportToPlaceInstance(placeId, srv.id, LocalPlayer)
-            sendLogWebhook(srv.id) -- Log the server ID
-            task.wait(3)
+-- Queue the script for re-execution after teleport
+queue_on_teleport([[
+    loadstring(game:HttpGet("https://pastebin.com/raw/XXXXXXX"))()
+]])
+
+-- Main execution
+local function main()
+    -- Check current server first
+    local eggName = foundEgg()
+    if eggName == "silly-egg" then
+        warn("✅ Found the silly-egg in this server!")
+        sendEggWebhook(eggName)
+        return
+    elseif eggName then
+        warn("Found a " .. eggName .. ", but continuing to hop to other servers.")
+        sendEggWebhook(eggName)
+    end
+
+    -- Start hopping
+    local count = 0
+    while count < maxServers do
+        local servers = getServers()
+        if #servers == 0 then
+            warn("No more servers available to check.")
+            break
+        end
+
+        for _, srv in ipairs(servers) do
+            if srv.playing < srv.maxPlayers and not visitedServers[srv.id] then
+                visitedServers[srv.id] = true
+                count += 1
+                warn("🌐 Hopping to server " .. count .. ": " .. srv.id)
+                sendLogWebhook(srv.id)
+                
+                local success = pcall(function()
+                    TeleportService:TeleportToPlaceInstance(placeId, srv.id, LocalPlayer)
+                end)
+                
+                if not success then
+                    warn("Failed to teleport to server " .. srv.id)
+                end
+                
+                task.wait(3) -- Wait before next attempt
+                break -- Break after teleport attempt
+            end
+        end
+        
+        if not cursor then 
+            warn("No more pages to check.")
+            break 
         end
     end
-    if not cursor then break end
+
+    warn("❌ No eggs found after checking " .. count .. " servers.")
 end
 
-warn("❌ No eggs found after checking all servers.")
+-- Run the main function
+local success, err = pcall(main)
+if not success then
+    warn("Script error: " .. err)
+end
