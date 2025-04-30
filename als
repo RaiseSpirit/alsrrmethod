@@ -5,7 +5,7 @@ local eggWebhookUrl = "https://discord.com/api/webhooks/1367259636616663122/pYz5
 local logWebhookUrl = "https://discord.com/api/webhooks/1128856038137933885/5QenGJa5Ip8gb7rBLJs_q9gkYhsL134ARFz8HVTp0obEyE6jQiVULi7-pSgcKeu8OMQh" -- Webhook to log server IDs
 
 -- Egg names to check for in Rendered.Rifts
-local eggNames = {"silly-egg", "rainbow-egg", "void-egg"}
+local eggNames = {"silly-egg"}
 
 -- SERVICES
 local HttpService = game:GetService("HttpService")
