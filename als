@@ -1,7 +1,7 @@
 -- CONFIG
 local placeId = 85896571713843 -- Confirmed BSGI place ID
 local maxServers = 200
-local webhookUrl = "https://discord.com/api/webhooks/1367259636616663122/pYz5XUFncqU_Bh4o6zwpOYeac5nlPlSbio8VcvFFT17jAd6se3kLmR5f2gaqueDJh5Rh" -- Discord Webhook URL
+local webhookUrl = "https://discord.com/api/webhooks/1128856038137933885/5QenGJa5Ip8gb7rBLJs_q9gkYhsL134ARFz8HVTp0obEyE6jQiVULi7-pSgcKeu8OMQh" -- Discord Webhook URL
 
 -- Egg names to check for in Rendered.Rifts
 local eggNames = {"silly-egg"}
@@ -44,7 +44,6 @@ end
 
 -- Send a Discord webhook
 local function sendWebhook(eggName)
-    local jobId = game.JobId -- Grab the JobId of the current server
     local joinLink = "https://www.roblox.com/games/" .. placeId .. "/?join-through-client=true"
     local message = {
         content = "Egg found: " .. eggName,
@@ -54,8 +53,7 @@ local function sendWebhook(eggName)
                 description = "Found the " .. eggName .. " in the server!",
                 fields = {
                     { name = "Join Link", value = joinLink },
-                    { name = "Player", value = LocalPlayer.Name },
-                    { name = "JobId", value = jobId } -- Add JobId field here
+                    { name = "Player", value = LocalPlayer.Name }
                 }
             }
         }
@@ -93,14 +91,11 @@ loadstring(game:HttpGet("https://pastebin.com/raw/XXXXXXX"))()
 queue_on_teleport(requeueScript)
 
 -- Check current server for eggs
-local eggName = foundEgg()
-if eggName == "silly-egg" then
-    warn("✅ Found the silly-egg in this server!")
-    sendWebhook(eggName)
-    return -- Stop if the silly-egg is found
-elseif eggName then
-    warn("Found a " .. eggName .. ", but continuing to hop to other servers.")
-    sendWebhook(eggName)
+local found = foundEgg()
+if found then
+    warn("✅ " .. found .. " found in this server!")
+    sendWebhook(found)
+    return
 end
 
 -- Start hopping
