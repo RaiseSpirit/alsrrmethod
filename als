@@ -101,10 +101,6 @@ local function scanForEgg()
             local name = obj.Name:lower()
             if name:find("silly%-egg") then
                 return "SILLY"
-            elseif name:find("") then
-                return "RAINBOW"
-            elseif name:find("") then
-                return "VOID"
             end
         end
     end
