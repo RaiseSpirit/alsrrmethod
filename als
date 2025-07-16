@@ -1,20 +1,4 @@
--- CONFIG: Customize what to buy and what to pickup
-getgenv().Config = {
-    SeedsBuyList = {
-        ["Carrot"] = true,
-        ["Tomato"] = true,
-        ["Strawberry"] = false,
-        -- add other seeds here...
-    },
-    PickupList = {
-        ["Carrot"] = true,
-        ["Strawberry"] = true,
-        ["Watering Can"] = false,
-        ["Common Egg"] = false,
-        -- add other pickups here...
-    }
-}
-
+print(hi its working)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
