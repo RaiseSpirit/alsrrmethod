@@ -55,3 +55,48 @@ for _, seedFrame in pairs(scrollingFrame:GetChildren()) do
         end
     end
 end
+function PickupFruits()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local HRP = Character:WaitForChild("HumanoidRootPart")
+
+    local Config = getgenv().Config or {}
+    local PickupList = Config.PickupList or {}
+
+    local Farm = workspace:FindFirstChild("Farm") and workspace.Farm:FindFirstChild("Farm")
+    if not Farm then return end
+
+    local OwnerValue = Farm.Important.Data:FindFirstChild("Owner")
+    if not OwnerValue or OwnerValue.Value ~= LocalPlayer.Name then
+        return -- not your farm
+    end
+
+    local Plants_Physical = Farm.Important:FindFirstChild("Plants_Physical")
+    if not Plants_Physical then return end
+
+    for _, plantModel in ipairs(Plants_Physical:GetChildren()) do
+        local fruits = plantModel:FindFirstChild("Fruits")
+        if fruits then
+            for _, fruitContainer in ipairs(fruits:GetChildren()) do
+                local fruitName = fruitContainer.Name
+                if PickupList[fruitName] then
+                    for _, fruitPart in ipairs(fruitContainer:GetChildren()) do
+                        local prompt = fruitPart:FindFirstChild("ProximityPrompt")
+                        if prompt and prompt:IsA("ProximityPrompt") and prompt.Enabled then
+                            HRP.CFrame = fruitPart.CFrame + Vector3.new(0, 3, 0)
+                            task.wait(0.2)
+                            pcall(function()
+                                prompt.HoldDuration = 0
+                                prompt:InputHoldBegin()
+                                task.wait(0.1)
+                                prompt:InputHoldEnd()
+                            end)
+                            task.wait(0.2)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
