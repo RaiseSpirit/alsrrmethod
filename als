@@ -69,7 +69,8 @@ function PickupFruits()
 
     local OwnerValue = Farm.Important.Data:FindFirstChild("Owner")
     if not OwnerValue or OwnerValue.Value ~= LocalPlayer.Name then
-        return -- not your farm
+        warn("Farm is not owned by you.")
+        return
     end
 
     local Plants_Physical = Farm.Important:FindFirstChild("Plants_Physical")
@@ -82,8 +83,9 @@ function PickupFruits()
                 local fruitName = fruitContainer.Name
                 if PickupList[fruitName] then
                     for _, fruitPart in ipairs(fruitContainer:GetChildren()) do
-                        local prompt = fruitPart:FindFirstChild("ProximityPrompt")
-                        if prompt and prompt:IsA("ProximityPrompt") and prompt.Enabled then
+                        local prompt = fruitPart:FindFirstChildOfClass("ProximityPrompt")
+                        if prompt and prompt.Enabled then
+                            -- Teleport on top of the fruit and collect it
                             HRP.CFrame = fruitPart.CFrame + Vector3.new(0, 3, 0)
                             task.wait(0.2)
                             pcall(function()
@@ -100,3 +102,4 @@ function PickupFruits()
         end
     end
 end
+
