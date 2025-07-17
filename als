@@ -1,23 +1,17 @@
---===[ Config must be set first externally using getgenv().Config ]===--
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local player = Players.LocalPlayer
 local gui = player:WaitForChild("PlayerGui")
+local seedShop = gui:WaitForChild("Seed_Shop")
+local scrollingFrame = seedShop.Frame:WaitForChild("ScrollingFrame")
+
 local leaderstats = player:WaitForChild("leaderstats")
 local sheckles = leaderstats:WaitForChild("Sheckles")
 
-local Config = getgenv().Config or { SeedsBuyList = {}, PickupList = {} }
-
---===[ BUYING SEEDS ]===--
-local seedShop = gui:WaitForChild("Seed_Shop")
-local scrollingFrame = seedShop.Frame:WaitForChild("ScrollingFrame")
 local buyEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuySeedStock")
 
-local function parseNumber(str)
-    local numStr = str:match("%d+%.?%d*")
-    return numStr and tonumber(numStr) or nil
-end
+local Config = getgenv().Config
 
 for _, seedFrame in pairs(scrollingFrame:GetChildren()) do
     if seedFrame:IsA("Frame") then
@@ -29,42 +23,35 @@ for _, seedFrame in pairs(scrollingFrame:GetChildren()) do
                 local stockText = mainFrame:FindFirstChild("Stock_Text")
 
                 if costText and stockText then
+                    local function parseNumber(str)
+                        local numStr = str:match("%d+%.?%d*")
+                        if numStr then
+                            return tonumber(numStr)
+                        else
+                            return nil
+                        end
+                    end
+
                     local cost = parseNumber(costText.Text)
                     local stock = parseNumber(stockText.Text)
 
                     if cost and stock then
                         if stock > 0 and sheckles.Value >= cost then
-                            print("Buying:", seedName, "Cost:", cost, "Stock:", stock)
+                            print("Buying seed:", seedName, "Cost:", cost, "Stock:", stock)
                             buyEvent:FireServer(seedName)
                             wait(0.5)
                         else
-                            print("Too expensive or out of stock:", seedName)
+                            print("Cannot buy", seedName, "Stock:", stock, "Cost:", cost, "Sheckles:", sheckles.Value)
                         end
                     else
-                        warn("Could not parse cost/stock for", seedName)
+                        warn("Could not parse cost or stock for seed:", seedName)
                     end
+                else
+                    warn("Cost_Text or Stock_Text missing for seed:", seedName)
                 end
+            else
+                warn("Main_Frame missing for seed:", seedName)
             end
-        end
-    end
-end
-
---===[ PICKING PLANTS ]===--
-local plantsFolder = workspace:WaitForChild("Farm"):WaitForChild("Farm"):WaitForChild("Important"):WaitForChild("Plants_Physical")
-
-for _, plant in pairs(plantsFolder:GetChildren()) do
-    local plantName = plant.Name
-    if Config.PickupList[plantName] then
-        local prompt = plant:FindFirstChildOfClass("ProximityPrompt") 
-                    or plant:FindFirstChildWhichIsA("ProximityPrompt", true)
-
-        if prompt then
-            prompt:InputHoldBegin()
-            wait(0.1)
-            prompt:InputHoldEnd()
-            print("Picked:", plantName)
-        else
-            print("No prompt found for:", plantName)
         end
     end
 end
