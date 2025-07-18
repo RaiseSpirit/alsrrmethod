@@ -102,4 +102,52 @@ function PickupFruits()
         end
     end
 end
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local rootPart = character:WaitForChild("HumanoidRootPart")
 
+local pickupFolder = workspace:WaitForChild("Farm")
+    :WaitForChild("Farm")
+    :WaitForChild("Important")
+    :WaitForChild("Plants_Physical")
+
+-- Function to trigger a ProximityPrompt
+local function triggerPrompt(prompt)
+    if prompt and prompt:IsA("ProximityPrompt") then
+        fireproximityprompt(prompt)
+    end
+end
+
+-- Function to check if the item should be picked up
+local function shouldPickup(itemName)
+    for plant, enabled in pairs(getgenv().Config.PickupList) do
+        if enabled and string.find(itemName:lower(), plant:lower()) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Main pickup function
+local function pickupNearby()
+    if not getgenv().Config.Enabled then return end
+    for _, item in ipairs(pickupFolder:GetChildren()) do
+        if shouldPickup(item.Name) then
+            local primary = item:FindFirstChild("PrimaryPart") or item:FindFirstChildWhichIsA("BasePart")
+            if primary and (primary.Position - rootPart.Position).Magnitude <= getgenv().Config.Range then
+                local prompt = item:FindFirstChildWhichIsA("ProximityPrompt", true)
+                if prompt then
+                    triggerPrompt(prompt)
+                end
+            end
+        end
+    end
+end
+
+-- Auto-run loop
+task.spawn(function()
+    while task.wait(getgenv().Config.Interval) do
+        pickupNearby()
+    end
+end)
